@@ -1,6 +1,6 @@
 //! 请求构造模块，初始化公共请求参数。
 #![allow(unused)]
-use gostd::{net::url, strings};
+// use gostd::{net::url, strings};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -62,13 +62,15 @@ impl Request {
         let mut query_list = Vec::<String>::new();
         m.iter().for_each(|(k, v)| {
             if !v.is_empty() && k != "sign" {
-                let query = format!("{}={}", k, strings::TrimSpace(v));
+                // let query = format!("{}={}", k, strings::TrimSpace(v));
+                let query = format!("{}={}", k, v.trim());
                 query_list.push(query);
             }
         });
         query_list.sort();
 
-        Ok(strings::Join(query_list, "&"))
+        // Ok(strings::Join(query_list, "&"))
+        Ok(query_list.join("&"))
     }
 }
 
@@ -111,18 +113,17 @@ impl Requester for Request {
         let signture = signer.sign(&sign_sorted_source)?;
 
         let mut encode_list = Vec::<String>::new();
-        strings::Split(&sign_sorted_source, "&")
-            .iter()
+        sign_sorted_source.split("&")
             .for_each(|v| {
-                let mut splites: Vec<String> = strings::Split(v, "=")
-                    .iter()
+                let mut splites: Vec<String> = v.split("=")
                     .map(|x| x.to_string())
                     .collect();
-                splites[1] = url::QueryEscape(&splites[1]);
-                encode_list.push(strings::Join(splites, "="));
+                splites[1] = url::form_urlencoded::byte_serialize(splites[1].as_bytes()).collect();
+                encode_list.push(splites.join("="));
             });
-        let encode_query =
-            strings::Join(encode_list, "&") + "&sign=" + &url::QueryEscape(&signture);
+        let sign: String = url::form_urlencoded::byte_serialize(signture.as_bytes()).collect();
+        let encode_query = 
+            encode_list.join("&") + "&sign=" + &sign;       
         Ok(encode_query)
     }
 }

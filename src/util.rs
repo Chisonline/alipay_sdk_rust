@@ -3,13 +3,10 @@
 
 use super::biz::BizContenter;
 use crate::error::AliPayResult;
-use gostd::builtin::len;
-use gostd::io::StringWriter;
-use gostd::strings;
-use gostd::time;
 
+use chrono::Utc;
 use serde_json;
-use std::collections::HashMap;
+use std::{collections::HashMap, usize};
 
 use uuid::Uuid;
 
@@ -21,10 +18,9 @@ pub fn get_biz_content_str(w: &impl BizContenter) -> String {
 }
 
 pub fn get_now_beijing_time_str() -> String {
-    let layout = "2006-01-02 15:04:05";
-    let loc = time::FixedZone("CST", 3600 * 8);
-    let now_time = time::Now().In(loc);
-    now_time.Format(layout)
+    let loc = chrono::FixedOffset::east_opt(3600 * 8).unwrap();
+    let now_time = Utc::now().with_timezone(&loc);
+    format!("{}", now_time.format("%Y-%m-%d %H:%M:%S"))
 }
 
 pub fn get_out_trade_no() -> String {
@@ -35,48 +31,50 @@ pub fn build_form(
     base_url: &str,
     parameters: &mut HashMap<String, String>,
 ) -> AliPayResult<String> {
-    let mut buf = strings::Builder::new();
-    buf.WriteString("<form name=\"alipaysubmit\" method=\"post\" action=\"")?;
-    buf.WriteString(base_url)?;
-    buf.WriteString("?charset=utf-8")?;
-    buf.WriteString("\">\n")?;
-    buf.WriteString(&build_hidden_fields(parameters)?)?;
-    buf.WriteString("<input type=\"submit\" value=\"立即支付\" style=\"display:none\" >\n")?;
-    buf.WriteString("</form>\n")?;
-    buf.WriteString("<script>document.forms['alipaysubmit'].submit();</script>")?;
-    Ok(buf.String())
+    let mut buf: Vec<u8> = Vec::new();
+    buf.extend_from_slice(b"<form name=\"alipaysubmit\" method=\"post\" action=\"");
+    buf.extend_from_slice(base_url.as_bytes());
+    buf.extend_from_slice(b"?charset=utf-8");
+    buf.extend_from_slice(b"\">\n");
+    buf.extend_from_slice(build_hidden_fields(parameters)?.as_bytes());
+    buf.extend_from_slice("<input type=\"submit\" value=\"立即支付\" style=\"display:none\" >\n".as_bytes());
+    buf.extend_from_slice(b"</form>\n");
+    buf.extend_from_slice(b"<script>document.forms['alipaysubmit'].submit();</script>");
+    Ok(String::from_utf8(buf)?)
 }
 
 fn build_hidden_fields(parameters: &mut HashMap<String, String>) -> AliPayResult<String> {
     if parameters.is_empty() {
         return Ok("".to_string());
     }
-    let mut buf = strings::Builder::new();
+    let mut buf: Vec<u8> = Vec::new();
     for (key, value) in parameters {
         if value.is_empty() {
             continue;
         }
-        buf.WriteString(&build_hidden_field(key, value)?)?;
+        buf.extend_from_slice(build_hidden_field(key, value)?.as_bytes());
     }
-    Ok(buf.String())
+    Ok(String::from_utf8(buf)?)
 }
 
 fn build_hidden_field(key: &str, value: &str) -> AliPayResult<String> {
-    let mut buf = strings::Builder::new();
-    buf.WriteString("<input type=\"hidden\" name=\"")?;
-    buf.WriteString(key)?;
-    buf.WriteString("\" value=\"")?;
+    let mut buf: Vec<u8> = Vec::new();
+    buf.extend_from_slice(b"<input type=\"hidden\" name=\"");
+    buf.extend_from_slice(key.as_bytes());
+    buf.extend_from_slice(b"\" value=\"");
     // 转义双引号
-    let a = strings::ReplaceAll(value, "\"", "&quot;");
-    buf.WriteString(&a)?;
-    buf.WriteString("\">\n")?;
-    Ok(buf.String())
+    // let a = strings::ReplaceAll(value, "\"", "&quot;");
+    let a = value.replace("\"", "&quot;");
+    buf.extend_from_slice(a.as_bytes());
+    buf.extend_from_slice(b"\">\n");
+    // Ok(buf.String())
+    Ok(String::from_utf8(buf)?)
 }
 
 // 只支持value是{}或[]或""包裹的key，不支持数字
 pub fn json_get(result: &str, key: &str) -> String {
-    let len = len!(key);
-    let i = strings::LastIndex(result, key);
+    let len = key.len();
+    let i = result.rfind(key).unwrap_or(usize::MAX);
     let mut current = result.as_bytes()[i as usize + len];
     let mut index = i as usize + len;
     while current != b':' {
@@ -121,7 +119,7 @@ pub fn json_get(result: &str, key: &str) -> String {
     }
 }
 
-use gostd::net::url;
+// use gostd::net::url;
 
 // 获取支付宝CallBack异步消息的待签名字符串和签名
 // 自行实现签名文档 https://opendocs.alipay.com/common/02mse7?pathHash=096e611e
@@ -129,16 +127,22 @@ use gostd::net::url;
 pub fn get_async_callback_msg_source(raw_body: &[u8]) -> AliPayResult<(String, String, String)> {
     // 解析 URL 查询字符串
     let raw_str = std::str::from_utf8(raw_body)?;
-    let values = url::ParseQuery(&raw_str)?;
 
-    let sign_type = values.Get("sign_type");
-    // ParseQuery函数会把sign字符串的+解析成空格，需要还原回去
-    let sign = values.Get("sign").replace(" ", "+");
+    // TO CHECK
+    let mut values: HashMap<String, Vec<String>> = HashMap::new();
+    url::form_urlencoded::parse(raw_str.as_bytes())
+        .map(|(k,v)| values.entry(k.into_owned()).or_default().push(v.into_owned()));
+
+
+
+    let sign_type = values.get("sign_type").unwrap()[0].to_owned();
+    // 字符串的+会被解析成空格，需要还原回去
+    let sign = values.get("sign").unwrap()[0].replace(" ", "+");
 
     // 待签名字符串不包括sign和sign_type,需要删除
     let mut filtered_values = values.clone();
-    filtered_values.Del("sign");
-    filtered_values.Del("sign_type");
+    filtered_values.remove("sign");
+    filtered_values.remove("sign_type");
 
     // 按字典排序
     let mut keys: Vec<String> = vec![];
@@ -150,7 +154,7 @@ pub fn get_async_callback_msg_source(raw_body: &[u8]) -> AliPayResult<(String, S
     // 拼接成待签名字符串
     let source: String = keys
         .iter()
-        .map(|k| format!("{}={}", k.to_string(), filtered_values.to_owned().Get(k)))
+        .map(|k| format!("{}={}", k.to_string(), filtered_values.to_owned().get(k).unwrap()[0]))
         .collect::<Vec<String>>()
         .join("&");
 

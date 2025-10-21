@@ -21,9 +21,9 @@ fn test_new_pay_client() -> Result<impl Payer> {
     Ok(client)
 }
 
-#[test]
-fn test_trade_create() -> Result<()> {
-    let out_trade_no = gostd::time::Now().UnixNano().to_string();
+#[tokio::test]
+async fn test_trade_create() -> Result<()> {
+    let out_trade_no = chrono::Utc::now().timestamp_nanos_opt().unwrap().to_string();
     let mut biz_content = biz::TradeCreateBiz::new();
     biz_content.set_subject("huawei Mate50".into());
     biz_content.set_out_trade_no(out_trade_no.into());
@@ -33,7 +33,7 @@ fn test_trade_create() -> Result<()> {
     biz_content.set("Timestamp", "2024-07-08 16:09:04".into());
 
     let client = test_new_pay_client()?;
-    let res = client.trade_create(&biz_content)?;
+    let res = client.trade_create(&biz_content).await?;
     println!("{}", serde_json::to_string(&res)?);
 
     Ok(())

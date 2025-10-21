@@ -1,5 +1,3 @@
-use gostd::strings;
-
 use crate::sign::{builder, Signer};
 use anyhow::Result;
 const PRIVATE_KEY_FILE: &str = "src/tests/ffactory.org_私钥.txt"; // 沙箱环境自定义测试密钥
@@ -15,10 +13,10 @@ fn test_sign() -> Result<()> {
     let public_key_str = std::fs::read_to_string(format!("{}/{}", project_dir, PUBILC_KEY_FILE))?;
     sign.set_public_key(&public_key_str)?;
 
-    let mut source_split = strings::Split(SOURCE_URL, "&");
+    let mut source_split: Vec<&str> = SOURCE_URL.split("&").collect();
     source_split.sort();
 
-    let sorted_source = strings::Join(source_split, "&");
+    let sorted_source = source_split.join("&");
 
     let signature = sign.sign(&sorted_source)?;
     let is_passed = sign.verify(&sorted_source, &signature)?;

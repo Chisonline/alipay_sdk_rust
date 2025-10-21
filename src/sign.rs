@@ -1,17 +1,13 @@
 //! 签名验证模块
 #![allow(unused)]
 use base64;
-use gostd::{
-    bytes,
-    io::{ByteWriter, StringWriter},
-};
 use rsa::{
     pkcs1::DecodeRsaPrivateKey, pkcs8::DecodePublicKey, Hash, PaddingScheme, PublicKey,
     RsaPrivateKey, RsaPublicKey,
 };
 use std::{
     borrow::BorrowMut,
-    io::{Error, ErrorKind, Result},
+    io::{Error, ErrorKind, Result}, os::macos::raw::stat,
 };
 
 use sha2::{Digest, Sha256};
@@ -159,9 +155,9 @@ pub fn format_pem_public_key(raw: &str) -> String {
 }
 
 fn format_key(raw: &str, prefix: &str, suffix: &str, line_count: usize) -> String {
-    let mut buffer = bytes::Buffer::new();
-    buffer.WriteString(prefix);
-    buffer.WriteString("\n");
+    let mut buffer: Vec<u8> = Vec::new();
+    buffer.extend_from_slice(prefix.as_bytes());
+    buffer.extend_from_slice(b"\n");
     let raw_len = line_count;
     let key_len = raw.len();
     let mut raws = key_len / raw_len;
@@ -173,15 +169,15 @@ fn format_key(raw: &str, prefix: &str, suffix: &str, line_count: usize) -> Strin
     let mut end = start + raw_len;
     for i in 0..raws {
         if i == raws - 1 {
-            buffer.WriteString(raw.get(start..).unwrap());
+            buffer.extend_from_slice(raw.get(start..).unwrap().as_bytes());
         } else {
-            buffer.WriteString(raw.get(start..end).unwrap());
+            buffer.extend_from_slice(raw.get(start..end).unwrap().as_bytes());
         }
-        buffer.WriteByte(b'\n');
+        buffer.extend_from_slice(b"\n");
         start += raw_len;
-        end = start + raw_len
+        end = start + raw_len;
     }
-    buffer.WriteString(suffix);
-    buffer.WriteString("\n");
-    buffer.String()
+    buffer.extend_from_slice(suffix.as_bytes());
+    buffer.extend_from_slice(b"\n");
+    String::from_utf8(buffer).unwrap()
 }

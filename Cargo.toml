@@ -14,7 +14,6 @@ categories = ["api-bindings", "accessibility", "development-tools", "compilers"]
 jsonmap = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-gostd = { git = "https://github.com/Chisonline/gostd" }
 sha2 = "0.10.2"
 base64 = "0.22.1"
 rsa = "0.6.1"
@@ -25,3 +24,8 @@ x509-parser = "0.17.0"
 md5 = "0.7.0"
 thiserror ="2.0"
 anyhow= "1.0"
+url = "2.5.7"
+chrono = "0.4.42"
+reqwest = "0.12.24"
+tokio = { version = "1.48.0", features = ["full"]}
+http = "1.3.1"

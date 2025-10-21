@@ -1,5 +1,4 @@
 //! 证书相关函数，获取证书序列号，提取证书中的公钥
-use gostd::strings;
 use std::{
     fs,
     io::{Error, ErrorKind, Result},
@@ -32,10 +31,10 @@ pub fn cert_sn_from_utf8(cert_content: impl AsRef<[u8]>) -> Result<String> {
     if let Ok(x509) = cert.parse_x509() {
         let mut name = x509.tbs_certificate.issuer().to_string();
         //提取出的证书的issuer本身是以CN开头的，则无需逆序，直接返回
-        if !strings::HasPrefix(&name, "CN") {
-            let mut attributes = strings::Split(&name, ", ");
+        if !name.contains("CN") {
+            let mut attributes: Vec<&str> = name.split(", ").collect();
             attributes.reverse();
-            name = strings::Join(attributes, ",");
+            name = attributes.join(",");
         }
         let serial_number = x509.serial.to_str_radix(10);
         Ok(format!("{:x}", md5::compute(name + &serial_number)))
@@ -58,7 +57,7 @@ pub fn root_cert_sn_from_utf8(cert_contents: impl AsRef<[u8]>) -> Result<String>
     let cert_end = "-----END CERTIFICATE-----";
     let certs_str = String::from_utf8(cert_contents.as_ref().to_vec())
         .or(Err(Error::new(ErrorKind::Other, "form_utf8 failed")))?;
-    let pems = strings::Split(&certs_str, &cert_end);
+    let pems: Vec<&str> = certs_str.split(cert_end).collect();
     let mut sn = String::new();
     for c in pems {
         let cert_data = c.to_owned() + cert_end;

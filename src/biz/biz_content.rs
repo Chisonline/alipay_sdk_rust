@@ -1,6 +1,5 @@
 use core::hash;
 use std::{clone, hash::Hash};
-use gostd::strings;
 use jsonmap::{JsonMap, JsonV};
 use serde::{Deserialize, Serialize};
 
@@ -15,5 +14,5 @@ pub type V = JsonV<String>;
 /// 返回 例如“alipay.trade.create.response”的返回字段key
 pub fn get_response_key(biz: &impl BizContenter) -> String {
     let method = biz.method() + ".response";
-    strings::ReplaceAll(method, ".", "_")
+    method.replace(".", "_")
 }

@@ -7,7 +7,7 @@ use rsa::{
 };
 use std::{
     borrow::BorrowMut,
-    io::{Error, ErrorKind, Result}, os::macos::raw::stat,
+    io::{Error, ErrorKind, Result},
 };
 
 use sha2::{Digest, Sha256};

@@ -30,6 +30,8 @@ use crate::response::{
     TradeRefundResponse, TradeRoyaltyRelationBindResponse, TradeRoyaltyRelationUnBindResponse,
 };
 use crate::util::{self, build_form, json_get};
+use async_trait::async_trait;
+#[async_trait]
 pub trait Payer {
     async fn trade_create(&self, biz_content: &TradeCreateBiz) -> AliPayResult<TradeCreateResponse>;
 
@@ -132,6 +134,7 @@ pub struct PayClient {
     notify_url: String, // `json:"notify_url,omitempty"` 支付宝服务器主动通知callback商户服务器里指定的页面http/https路径
 }
 
+#[async_trait]
 impl Payer for PayClient {
     /// <https://opendocs.alipay.com/apis/api_1/alipay.trade.create>
     ///

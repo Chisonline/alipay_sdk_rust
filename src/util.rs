@@ -130,10 +130,9 @@ pub fn get_async_callback_msg_source(raw_body: &[u8]) -> AliPayResult<(String, S
 
     // TO CHECK
     let mut values: HashMap<String, Vec<String>> = HashMap::new();
-    url::form_urlencoded::parse(raw_str.as_bytes())
-        .map(|(k,v)| values.entry(k.into_owned()).or_default().push(v.into_owned()));
-
-
+    for (k, v) in url::form_urlencoded::parse(raw_str.as_bytes()) {
+        values.entry(k.into_owned()).or_default().push(v.into_owned());
+    }
 
     let sign_type = values.get("sign_type").unwrap()[0].to_owned();
     // 字符串的+会被解析成空格，需要还原回去
